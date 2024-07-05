@@ -237,14 +237,14 @@ impl Rip8 {
             self.v[0xf] = if o { 0 } else { 1 };
         } else if ir & 0xf00f == 0x8006 {
             self.v[0xf] = self.v[y] & 0x1;
-            self.v[x] = self.v[y].checked_shr(1).unwrap_or(0);
+            self.v[x] = self.v[y].overflowing_shr(1).0;
         } else if ir & 0xf00f == 0x8007 {
             let (v, o) = self.v[y].overflowing_sub(self.v[x]);
             self.v[x] = v;
             self.v[0xf] = if o { 0 } else { 1 };
         } else if ir & 0xf00f == 0x800e {
-            self.v[0xf] = (self.v[y] & 0xf0) >> 7;
-            self.v[x] = self.v[y].checked_shl(1).unwrap_or(0);
+            self.v[0xf] = (self.v[y] & 0x80) >> 7;
+            self.v[x] = self.v[y].overflowing_shl(1).0;
         } else if ir & 0xf00f == 0x9000 {
             if self.v[x] != self.v[y] {
                 self.pc = self.pc.wrapping_add(2);
@@ -584,6 +584,18 @@ mod tests {
     }
 
     #[test]
+    fn test_shr_overflow() {
+        let rom = vec![0x60, 0x00, 0x62, 0x01, 0x80, 0x26];
+
+        let rip8 = run_rom(&rom);
+
+        assert_eq!(rip8.pc, RIP8_ROM_START + 0x8);
+        assert_eq!(rip8.v[0x0], 0x00);
+        assert_eq!(rip8.v[0x2], 0x01);
+        assert_eq!(rip8.v[0xf], 1);
+    }
+
+    #[test]
     fn test_subn_without_borrow() {
         let rom = vec![0x60, 0x00, 0x61, 0x01, 0x80, 0x17];
 
@@ -628,6 +640,18 @@ mod tests {
         assert_eq!(rip8.pc, RIP8_ROM_START + 0x8);
         assert_eq!(rip8.v[0x0], 0x10);
         assert_eq!(rip8.v[0x1], 0x88);
+        assert_eq!(rip8.v[0xf], 1);
+    }
+
+    #[test]
+    fn test_shl_overflow() {
+        let rom = vec![0x60, 0x00, 0x61, 0x80, 0x80, 0x1e];
+
+        let rip8 = run_rom(&rom);
+
+        assert_eq!(rip8.pc, RIP8_ROM_START + 0x8);
+        assert_eq!(rip8.v[0x0], 0x00);
+        assert_eq!(rip8.v[0x1], 0x80);
         assert_eq!(rip8.v[0xf], 1);
     }
 
