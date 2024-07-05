@@ -79,7 +79,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("Rip8", WINDOW_WIDTH, WINDOW_HEIGHT)
+    let window = video_subsystem.window("Rip8", args.width, args.height)
         .position_centered()
         .build()
         .unwrap();
@@ -139,8 +139,8 @@ fn main() {
                 } else {
                     canvas.set_draw_color(Color::BLACK);
                 }
-                let spot_width: u32 = WINDOW_WIDTH / RIP8_DISPLAY_WIDTH as u32;
-                let spot_height: u32 = WINDOW_HEIGHT / RIP8_DISPLAY_HEIGHT as u32;
+                let spot_width: u32 = args.width / RIP8_DISPLAY_WIDTH as u32;
+                let spot_height: u32 = args.height / RIP8_DISPLAY_HEIGHT as u32;
                 let spot = Rect::new(
                     x as i32 * spot_width as i32, y as i32 * spot_height as i32,
                     spot_width, spot_height);
