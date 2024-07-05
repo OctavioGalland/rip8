@@ -17,7 +17,7 @@ use rip8::*;
 use buzzer::*;
 
 const WINDOW_WIDTH: u32 = 800;
-const WINDOW_HEIGHT: u32 = 600;
+const WINDOW_HEIGHT: u32 = 400;
 
 const SCANCODE_MAPPING: [Scancode; RIP8_KEY_COUNT] = [
     Scancode::X,
