@@ -9,7 +9,6 @@ pub const RIP8_STACK_MAX_SIZE: usize = 0x40;
 pub const RIP8_DISPLAY_WIDTH: usize = 64;
 pub const RIP8_DISPLAY_HEIGHT: usize = 32;
 pub const RIP8_KEY_COUNT: usize = 0x10;
-pub const RIP8_DISPLAY_SIZE: usize = RIP8_DISPLAY_WIDTH * RIP8_DISPLAY_HEIGHT / 8;
 
 pub struct Rip8 {
     pc: u16,
@@ -21,7 +20,7 @@ pub struct Rip8 {
                     // separately and keep the extra memory
     v: [u8; 16],
     i: u16,
-    display: Vec<u8>,
+    display: Vec<bool>,
     keyboard: [bool; RIP8_KEY_COUNT],
     dt: u8,
     st: u8,
@@ -42,7 +41,7 @@ impl Rip8 {
             stack: Vec::with_capacity(RIP8_STACK_MAX_SIZE),
             v: [0xff; 16],
             i: 0xff,
-            display: vec![0x00; RIP8_DISPLAY_SIZE],
+            display: vec![false; RIP8_DISPLAY_WIDTH * RIP8_DISPLAY_HEIGHT],
             keyboard: [false; RIP8_KEY_COUNT],
             dt: 0x00,
             st: 0x00,
@@ -121,36 +120,25 @@ impl Rip8 {
         }
     }
 
-    pub fn get_display_spot(&self, x: usize, y: usize) -> bool {
-        if x < RIP8_DISPLAY_WIDTH && y < RIP8_DISPLAY_HEIGHT {
-            let byte_offset = y * RIP8_DISPLAY_WIDTH / 8 + x / 8;
-            let bit_offset = x % 8;
-            let bit_value = (self.display[byte_offset] >> (7 - bit_offset)) & 0x01;
-            bit_value != 0
-        } else {
-            false
-        }
+    pub fn get_display_spot(&self, mut x: usize, mut y: usize) -> bool {
+        x = x % RIP8_DISPLAY_WIDTH;
+        y = y % RIP8_DISPLAY_HEIGHT;
+        self.display[y * RIP8_DISPLAY_WIDTH + x]
     }
 
     pub fn is_tone_on(&self) -> bool {
         self.st != 0
     }
 
-    fn set_spot_byte(&mut self, x: usize, y: usize, val: u8) -> bool {
-        let mut unset_bits = false;
-        if x < RIP8_DISPLAY_WIDTH && y < RIP8_DISPLAY_HEIGHT {
-            let byte_offset = y * RIP8_DISPLAY_WIDTH / 8 + x / 8;
-            let bit_offset = x % 8;
-
-            unset_bits |= (self.display[byte_offset] & val) != 0x0;
-            self.display[byte_offset] ^= val.checked_shr(bit_offset as u32).unwrap_or(0);
-            if x / 8 < RIP8_DISPLAY_WIDTH / 8 - 1 {
-                let val = val.checked_shl(8 - bit_offset as u32).unwrap_or(0);
-                unset_bits |= (self.display[byte_offset + 1] & val) != 0x0;
-                self.display[byte_offset + 1] ^= val;
-            }
+    fn set_spot(&mut self, mut x: usize, mut y: usize, val: bool) -> bool {
+        let mut unset = false;
+        x = x % RIP8_DISPLAY_WIDTH;
+        y = y % RIP8_DISPLAY_HEIGHT;
+        if self.display[y * RIP8_DISPLAY_WIDTH + x] && val {
+            unset = true;
         }
-        unset_bits
+        self.display[y * RIP8_DISPLAY_WIDTH + x] ^= val;
+        unset
     }
 
     pub fn step(&mut self, delta_time: f64) -> bool {
@@ -184,7 +172,7 @@ impl Rip8 {
                                          // but there is no u4 in rust
         if ir & 0xffff == 0x00e0 {
             for i in 0..self.display.len() {
-                self.display[i] = 0x00;
+                self.display[i] = false;
             }
         } else if ir & 0xffff == 0x00ee {
             if self.stack.len() < 2 {
@@ -258,9 +246,13 @@ impl Rip8 {
         } else if ir & 0xf000 == 0xd000 {
             let mut unset_bits = false;
             for idx in 0..n {
-                unset_bits |= self.set_spot_byte(self.v[x] as usize,
+                for s in 0..8 {
+                    let spot_byte = self.memory[self.i as usize + idx as usize];
+                    let spot = ((spot_byte >> (7-s)) & 0x01) != 0x00;
+                    unset_bits |= self.set_spot(self.v[x] as usize + s,
                                     (self.v[y] + idx) as usize,
-                                    self.memory[self.i as usize + idx as usize]);
+                                    spot);
+                }
             }
             self.v[0xf] = if unset_bits { 1 } else { 0 }
         } else if ir & 0xf0ff == 0xe09e {
@@ -770,7 +762,7 @@ mod tests {
     }
 
     #[test]
-    fn test_draw_clipped() {
+    fn test_draw_wrapped() {
         let mut rom = vec![0x61, 0x39, 0x62, 0x19, 0xd1, 0x28, 0x00, 0x00];
         let sprite = vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
         let stop_address = append_trailing_data_to_rom(&mut rom, sprite);
@@ -781,7 +773,10 @@ mod tests {
         assert_eq!(rip8.pc, stop_address);
         for y in 0..32 {
             for x in 0..64 {
-                if y > 24 && x > 56 {
+                if (x == 0 && y ==  0) ||
+                    (y > 24 && x > 56) ||
+                    (y > 24 && x == 0) ||
+                    (y ==0 && x > 56) {
                     assert!(rip8.get_display_spot(x, y));
                 } else {
                     assert!(!rip8.get_display_spot(x, y));
