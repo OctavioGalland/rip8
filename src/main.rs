@@ -56,11 +56,11 @@ fn main() {
         }
     };
 
-    let mut rip8 = if args.is_image {
-        Rip8::from_image_at_start(&rom, args.address, || -> u8{ rand::random::<u8>() })
+    let mut rip8 = (if args.is_image {
+        Rip8::from_image_at_start
     } else {
-        Rip8::from_rom_at_address(&rom, args.address, || -> u8{ rand::random::<u8>() })
-    };
+        Rip8::from_rom_at_address
+    })(&rom, args.address, || -> u8{ rand::random::<u8>() });
 
     let frequency = args.freq;
     let interval_ns = (1e9 / frequency as f64) as u64;
