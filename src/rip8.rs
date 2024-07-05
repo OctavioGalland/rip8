@@ -136,16 +136,21 @@ impl Rip8 {
         self.st != 0
     }
 
-    fn set_spot_byte(&mut self, x: usize, y: usize, val: u8) {
+    fn set_spot_byte(&mut self, x: usize, y: usize, val: u8) -> bool {
+        let mut unset_bits = false;
         if x < RIP8_DISPLAY_WIDTH && y < RIP8_DISPLAY_HEIGHT {
             let byte_offset = y * RIP8_DISPLAY_WIDTH / 8 + x / 8;
             let bit_offset = x % 8;
 
+            unset_bits |= (self.display[byte_offset] & val) != 0x0;
             self.display[byte_offset] ^= val.checked_shr(bit_offset as u32).unwrap_or(0);
             if x / 8 < RIP8_DISPLAY_WIDTH / 8 - 1 {
-                self.display[byte_offset + 1] ^= val.checked_shl(8 - bit_offset as u32).unwrap_or(0);
+                let val = val.checked_shl(8 - bit_offset as u32).unwrap_or(0);
+                unset_bits |= (self.display[byte_offset + 1] & val) != 0x0;
+                self.display[byte_offset + 1] ^= val;
             }
         }
+        unset_bits
     }
 
     pub fn step(&mut self, delta_time: f64) -> bool {
@@ -251,11 +256,13 @@ impl Rip8 {
         } else if ir & 0xf000 == 0xc000 {
             self.v[x] = (self.get_random)() & k;
         } else if ir & 0xf000 == 0xd000 {
+            let mut unset_bits = false;
             for idx in 0..n {
-                self.set_spot_byte(self.v[x] as usize,
+                unset_bits |= self.set_spot_byte(self.v[x] as usize,
                                     (self.v[y] + idx) as usize,
                                     self.memory[self.i as usize + idx as usize]);
             }
+            self.v[0xf] = if unset_bits { 1 } else { 0 }
         } else if ir & 0xf0ff == 0xe09e {
             if self.keyboard[self.v[x] as usize] {
                 self.pc = self.pc.wrapping_add(2);
@@ -696,6 +703,25 @@ mod tests {
                 }
             }
         }
+        assert_eq!(rip8.v[0xf], 0);
+    }
+
+    #[test]
+    fn test_draw_unset_spot() {
+        let mut rom: Vec<u8> = vec![0x60, 0x00, 0xd0, 0x08, 0xd0, 0x08, 0x00, 0x00];
+        let sprite: Vec<u8> = vec![0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55];
+        let stop_address = append_trailing_data_to_rom(&mut rom, sprite);
+
+        let rip8 = run_rom(&rom);
+
+        assert_eq!(rip8.i, stop_address);
+        assert_eq!(rip8.pc, stop_address);
+        for y in 0..32 {
+            for x in 0..64 {
+                assert!(!rip8.get_display_spot(x, y));
+            }
+        }
+        assert_eq!(rip8.v[0xf], 1);
     }
 
     #[test]
