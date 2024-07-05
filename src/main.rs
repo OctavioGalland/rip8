@@ -119,9 +119,11 @@ fn main() {
         }
 
         // Wait for a while to stick to processor frequency
-        let delta_ns = last_step.elapsed().as_nanos() as u64;
-        let wait_ns = interval_ns.saturating_sub(delta_ns);
-        std::thread::sleep(Duration::from_nanos(wait_ns));
+        if !keyboard_state.is_scancode_pressed(Scancode::Space) {
+            let delta_ns = last_step.elapsed().as_nanos() as u64;
+            let wait_ns = interval_ns.saturating_sub(delta_ns);
+            std::thread::sleep(Duration::from_nanos(wait_ns));
+        }
 
         // Calculate delta since last step
         let delta_s = last_step.elapsed().as_nanos() as f64 / 1e9;
