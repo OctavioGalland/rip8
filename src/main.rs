@@ -45,6 +45,9 @@ struct Args {
 
     #[arg(long, default_value_t=400, help="Window height")]
     height: u32,
+
+    #[arg(short, default_value_t=false, help="S-CHIP semantics (affects shift, load/store instructions)")]
+    s_chip: bool,
 }
 
 fn main() {

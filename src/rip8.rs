@@ -25,6 +25,7 @@ pub struct Rip8 {
     dt: u8,
     st: u8,
 
+    s_chip_mode: bool,
     awaiting_input: bool,
     awaiter_index: usize,
     elapsed: f64,
@@ -46,6 +47,7 @@ impl Rip8 {
             dt: 0x00,
             st: 0x00,
 
+            s_chip_mode: false,
             awaiting_input: false,
             awaiter_index: 0,
             elapsed: 0.0,
@@ -102,9 +104,13 @@ impl Rip8 {
 
         Self::from_image_at_start(&memory, loading_address, get_random)
     }
-    
+
     pub fn from_rom(rom: &Vec<u8>, get_random: fn() -> u8) -> Self {
         Self::from_rom_at_address(rom, RIP8_ROM_START, get_random)
+    }
+
+    pub fn set_s_chip_mode(&mut self, s_chip_mode: bool) {
+        self.s_chip_mode = s_chip_mode;
     }
 
     pub fn set_keydown(&mut self, k: usize, v: bool) {
@@ -224,15 +230,17 @@ impl Rip8 {
             self.v[x] = v;
             self.v[0xf] = if o { 0 } else { 1 };
         } else if ir & 0xf00f == 0x8006 {
-            self.v[0xf] = self.v[y] & 0x1;
-            self.v[x] = self.v[y].overflowing_shr(1).0;
+            let o = if self.s_chip_mode { x } else { y };
+            self.v[0xf] = self.v[o] & 0x1;
+            self.v[x] = self.v[o].overflowing_shr(1).0;
         } else if ir & 0xf00f == 0x8007 {
             let (v, o) = self.v[y].overflowing_sub(self.v[x]);
             self.v[x] = v;
             self.v[0xf] = if o { 0 } else { 1 };
         } else if ir & 0xf00f == 0x800e {
-            self.v[0xf] = (self.v[y] & 0x80) >> 7;
-            self.v[x] = self.v[y].overflowing_shl(1).0;
+            let o = if self.s_chip_mode { x } else { y };
+            self.v[0xf] = (self.v[o] & 0x80) >> 7;
+            self.v[x] = self.v[o].overflowing_shl(1).0;
         } else if ir & 0xf00f == 0x9000 {
             if self.v[x] != self.v[y] {
                 self.pc = self.pc.wrapping_add(2);
@@ -282,12 +290,16 @@ impl Rip8 {
             self.memory[self.i as usize + 2] = (self.v[x] / 1) % 10;
         } else if ir & 0xf0ff == 0xf055 {
             for r in 0..(x+1) {
-                self.memory[self.i as usize] = self.v[r];
+                self.memory[self.i as usize + r] = self.v[r];
+            }
+            if !self.s_chip_mode {
                 self.i = self.i.wrapping_add(1);
             }
         } else if ir & 0xf0ff == 0xf065 {
             for r in 0..(x+1) {
-                self.v[r] = self.memory[self.i as usize];
+                self.v[r] = self.memory[self.i as usize + r];
+            }
+            if !self.s_chip_mode {
                 self.i = self.i.wrapping_add(1);
             }
         } else {
