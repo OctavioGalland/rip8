@@ -2,6 +2,8 @@
 name = "rip8"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/OctavioGalland/rip8"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 rand = "0.8.5"
