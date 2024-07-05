@@ -257,11 +257,11 @@ impl Rip8 {
                                     self.memory[self.i as usize + idx as usize]);
             }
         } else if ir & 0xf0ff == 0xe09e {
-            if self.keyboard[x] {
+            if self.keyboard[self.v[x] as usize] {
                 self.pc = self.pc.wrapping_add(2);
             }
         } else if ir & 0xf0ff == 0xe0a1 {
-            if ! self.keyboard[x] {
+            if ! self.keyboard[self.v[x] as usize] {
                 self.pc = self.pc.wrapping_add(2);
             }
         } else if ir & 0xf0ff == 0xf007 {
@@ -742,7 +742,7 @@ mod tests {
 
     #[test]
     fn test_skp_taken() {
-        let rom = vec![0xe1, 0x9e, 0x00, 0x00];
+        let rom = vec![0x63, 0x01, 0xe3, 0x9e, 0x00, 0x00];
 
         let mut rip8 = rip8_with_rom(&rom);
         rip8.set_keydown(1, true);
@@ -753,7 +753,7 @@ mod tests {
 
     #[test]
     fn test_skp_not_taken() {
-        let rom = vec![0xe1, 0x9e, 0x00, 0x00];
+        let rom = vec![0x63, 0x01, 0xe3, 0x9e, 0x00, 0x00];
 
         let rip8 = run_rom(&rom);
 
@@ -762,7 +762,7 @@ mod tests {
 
     #[test]
     fn test_sknp_taken() {
-        let rom = vec![0xe1, 0xa1, 0x00, 0x00];
+        let rom = vec![0x62, 0x05, 0xe2, 0xa1, 0x00, 0x00];
 
         let rip8 = run_rom(&rom);
 
@@ -771,7 +771,7 @@ mod tests {
 
     #[test]
     fn test_sknp_not_taken() {
-        let rom = vec![0xe0, 0xa1, 0x00, 0x00];
+        let rom = vec![0x62, 0x00, 0xe2, 0xa1, 0x00, 0x00];
 
         let mut rip8 = rip8_with_rom(&rom);
         rip8.set_keydown(0, true);
