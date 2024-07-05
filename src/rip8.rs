@@ -268,7 +268,7 @@ impl Rip8 {
                 self.pc = self.pc.wrapping_add(2);
             }
         } else if ir & 0xf0ff == 0xe0a1 {
-            if ! self.keyboard[self.v[x] as usize] {
+            if !self.keyboard[self.v[x] as usize] {
                 self.pc = self.pc.wrapping_add(2);
             }
         } else if ir & 0xf0ff == 0xf007 {
