@@ -5,7 +5,7 @@
 
 pub const RIP8_MEMORY_SIZE: usize = 0x1000;
 pub const RIP8_ROM_START: u16 = 0x200;
-pub const RIP8_STACK_MAX_SIZE: usize = 0x20;
+pub const RIP8_STACK_MAX_SIZE: usize = 0x40;
 pub const RIP8_DISPLAY_WIDTH: usize = 64;
 pub const RIP8_DISPLAY_HEIGHT: usize = 32;
 pub const RIP8_KEY_COUNT: usize = 0x10;
