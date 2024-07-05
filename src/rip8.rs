@@ -180,7 +180,7 @@ impl Rip8 {
                 return false
             }
             self.pc = (self.stack.pop().unwrap() as u16) << 8;
-            self.pc |= self.stack.pop().unwrap() as usize as u16;
+            self.pc |= self.stack.pop().unwrap() as u16;
         } else if ir & 0xf000 == 0x1000 {
             self.pc = i;
         } else if ir & 0xf000 == 0x2000 {
