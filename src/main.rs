@@ -16,9 +16,6 @@ pub mod buzzer;
 use rip8::*;
 use buzzer::*;
 
-const WINDOW_WIDTH: u32 = 800;
-const WINDOW_HEIGHT: u32 = 400;
-
 const SCANCODE_MAPPING: [Scancode; RIP8_KEY_COUNT] = [
     Scancode::X,
     Scancode::Num1,Scancode::Num2,Scancode::Num3,
@@ -42,10 +39,20 @@ struct Args {
 
     #[arg(short, long, default_value_t=0x200, help="Loading/start address")]
     address: u16,
+
+    #[arg(long, default_value_t=800, help="Window width")]
+    width: u32,
+
+    #[arg(long, default_value_t=400, help="Window height")]
+    height: u32,
 }
 
 fn main() {
     let args = Args::parse();
+
+    if args.width != args.height * 2 {
+        println!("Running in an aspect ratio other than 2:1, display may look stretched!");
+    }
 
     // Load rom, create VM and init timers
     let rom = match fs::read(&args.file) {
@@ -61,6 +68,8 @@ fn main() {
     } else {
         Rip8::from_rom_at_address
     })(&rom, args.address, || -> u8{ rand::random::<u8>() });
+
+    rip8.set_s_chip_mode(args.s_chip);
 
     let frequency = args.freq;
     let interval_ns = (1e9 / frequency as f64) as u64;
