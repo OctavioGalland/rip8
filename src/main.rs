@@ -87,7 +87,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut canvas = window.into_canvas().build().unwrap();
+    let mut canvas = window.into_canvas().accelerated().build().unwrap();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
