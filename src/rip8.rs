@@ -25,15 +25,16 @@ pub struct Rip8 {
     dt: u8,
     st: u8,
 
+    freq: u32,
     s_chip_mode: bool,
     awaiting_input: bool,
     awaiter_index: usize,
-    elapsed: f64,
+    elapsed: u32,
     get_random: fn() -> u8,
 }
 
 impl Rip8 {
-    pub fn from_image_at_start(image: &Vec<u8>, start_address: u16, get_random: fn() -> u8) -> Self {
+    pub fn from_image_at_start(image: &Vec<u8>, freq: u32, start_address: u16, get_random: fn() -> u8) -> Self {
         assert!(image.len() == RIP8_MEMORY_SIZE);
 
         Self {
@@ -47,19 +48,20 @@ impl Rip8 {
             dt: 0x00,
             st: 0x00,
 
+            freq,
             s_chip_mode: false,
             awaiting_input: false,
             awaiter_index: 0,
-            elapsed: 0.0,
+            elapsed: 0,
             get_random,
         }
     }
 
-    pub fn from_image(image: &Vec<u8>, get_random: fn() -> u8) -> Self {
-        Self::from_image_at_start(image, RIP8_ROM_START, get_random)
+    pub fn from_image(image: &Vec<u8>, freq: u32, get_random: fn() -> u8) -> Self {
+        Self::from_image_at_start(image, freq, RIP8_ROM_START, get_random)
     }
 
-    pub fn from_rom_at_address(rom: &Vec<u8>, loading_address: u16, get_random: fn() -> u8) -> Self {
+    pub fn from_rom_at_address(rom: &Vec<u8>, freq: u32, loading_address: u16, get_random: fn() -> u8) -> Self {
         assert!(loading_address >= RIP8_ROM_START);
         assert!(rom.len() <= RIP8_MEMORY_SIZE - loading_address as usize);
 
@@ -102,11 +104,11 @@ impl Rip8 {
             memory.push(0xff);
         }
 
-        Self::from_image_at_start(&memory, loading_address, get_random)
+        Self::from_image_at_start(&memory, freq, loading_address, get_random)
     }
 
-    pub fn from_rom(rom: &Vec<u8>, get_random: fn() -> u8) -> Self {
-        Self::from_rom_at_address(rom, RIP8_ROM_START, get_random)
+    pub fn from_rom(rom: &Vec<u8>, freq: u32, get_random: fn() -> u8) -> Self {
+        Self::from_rom_at_address(rom, freq, RIP8_ROM_START, get_random)
     }
 
     pub fn set_s_chip_mode(&mut self, s_chip_mode: bool) {
@@ -147,15 +149,15 @@ impl Rip8 {
         unset
     }
 
-    pub fn step(&mut self, delta_time: f64) -> bool {
-        self.elapsed += delta_time;
+    pub fn step(&mut self, delta_cycles: u32) -> bool {
+        self.elapsed = self.elapsed.wrapping_add(delta_cycles);
 
         // Timers count down at 60hz
-        let tick_duration = 0.0166666666;
-        while self.elapsed >= tick_duration {
+        let tick_cycles = self.freq / 60;
+        while self.elapsed >= tick_cycles {
             self.dt = self.dt.saturating_sub(1);
             self.st = self.st.saturating_sub(1);
-            self.elapsed -= tick_duration;
+            self.elapsed = self.elapsed.wrapping_sub(tick_cycles);
         }
 
         // fetch
@@ -315,17 +317,18 @@ mod tests {
     use crate::rip8::*;
     const ALWAYS_42: fn() -> u8 = || -> u8 { 0x42 };
     const ALWAYS_ZERO: fn() -> u8 = || -> u8 { 0x00 };
+    const DEFAULT_FREQUENCY: u32 = 480;
 
    fn rip8_with_rom(rom: &Vec<u8>) -> Rip8 {
-        Rip8::from_rom(rom, ALWAYS_ZERO)
+        Rip8::from_rom(rom, DEFAULT_FREQUENCY, ALWAYS_ZERO)
     }
 
     fn run(rip8: &mut Rip8) {
-        while rip8.step(0.0) { }
+        while rip8.step(1) { }
     }
 
     fn run_rom_with_random(rom: &Vec<u8>, random: fn() -> u8) -> Rip8 {
-        let mut rip8 = Rip8::from_rom(rom, random);
+        let mut rip8 = Rip8::from_rom(rom, 480, random);
         run(&mut rip8);
         rip8
     }
@@ -855,16 +858,16 @@ mod tests {
 
         // no matter how much we run, it should stop until it receives input
         for _ in 0..50 {
-            rip8.step(0.1);
+            rip8.step(1);
         }
         rip8.set_keydown(0xf, true);
-        rip8.step(0.1);
+        rip8.step(1);
         rip8.set_keydown(0xf, false);
         for _ in 0..50 {
-            rip8.step(0.1);
+            rip8.step(1);
         }
         rip8.set_keydown(0x0, true);
-        rip8.step(0.1);
+        rip8.step(1);
         rip8.set_keydown(0x0, false);
         // finish running
         run(&mut rip8);
@@ -1263,10 +1266,10 @@ mod tests {
         let rom = vec![0x60, 0xff, 0xf0, 0x15, 0x12, 0x04];
 
         let mut rip8 = rip8_with_rom(&rom);
-        rip8.step(0.0);
-        rip8.step(0.0);
+        rip8.step(0);
+        rip8.step(0);
         assert_eq!(rip8.dt, 0xff);
-        rip8.step(1.0001);
+        rip8.step(DEFAULT_FREQUENCY);
         assert_eq!(rip8.dt, 0xc3);
     }
 }
