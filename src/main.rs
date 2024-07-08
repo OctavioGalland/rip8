@@ -1,6 +1,5 @@
 extern crate sdl2;
 
-use std::time::{Duration, Instant};
 use std::fs;
 
 use sdl2::pixels::Color;
@@ -66,17 +65,15 @@ fn main() {
         }
     };
 
+    let frequency = args.freq;
+
     let mut rip8 = (if args.is_image {
         Rip8::from_image_at_start
     } else {
         Rip8::from_rom_at_address
-    })(&rom, args.address, || -> u8{ rand::random::<u8>() });
+    })(&rom, frequency, args.address, || -> u8{ rand::random::<u8>() });
 
     rip8.set_s_chip_mode(args.s_chip);
-
-    let frequency = args.freq;
-    let interval_ns = (1e9 / frequency as f64) as u64;
-    let mut last_step = Instant::now();
 
     // Init SDL2, get a window and a buzzer
     let sdl_context = sdl2::init().unwrap();
@@ -87,10 +84,14 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut canvas = window.into_canvas().accelerated().build().unwrap();
+    let idx = window.display_index().unwrap();
+    let refresh_rate = video_subsystem.current_display_mode(idx).unwrap().refresh_rate as u32;
+
+    let mut canvas = window.into_canvas().present_vsync().accelerated().build().unwrap();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
+
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -98,6 +99,7 @@ fn main() {
 
     // Main loop
     let mut running = true;
+    let insts_per_frame = refresh_rate / args.freq;
     while running {
         // Clear screen and handle exit event
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -118,17 +120,10 @@ fn main() {
             rip8.set_keydown(k, keyboard_state.is_scancode_pressed(SCANCODE_MAPPING[k]));
         }
 
-        // Wait for a while to stick to processor frequency
-        if !keyboard_state.is_scancode_pressed(Scancode::Space) {
-            let delta_ns = last_step.elapsed().as_nanos() as u64;
-            let wait_ns = interval_ns.saturating_sub(delta_ns);
-            std::thread::sleep(Duration::from_nanos(wait_ns));
-        }
-
         // Calculate delta since last step
-        let delta_s = last_step.elapsed().as_nanos() as f64 / 1e9;
-        last_step = Instant::now();
-        running &= rip8.step(delta_s);
+        for _ in 0..insts_per_frame {
+            running &= rip8.step(1);
+        }
 
         // Turn buzzer on/off & present screen
         if rip8.is_tone_on() && !buzzer.is_on() {

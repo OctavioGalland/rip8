@@ -293,14 +293,14 @@ impl Rip8 {
                 self.memory[self.i as usize + r] = self.v[r];
             }
             if !self.s_chip_mode {
-                self.i = self.i.wrapping_add(1);
+                self.i = self.i.wrapping_add(x as u16 + 1);
             }
         } else if ir & 0xf0ff == 0xf065 {
             for r in 0..(x+1) {
                 self.v[r] = self.memory[self.i as usize + r];
             }
             if !self.s_chip_mode {
-                self.i = self.i.wrapping_add(1);
+                self.i = self.i.wrapping_add(x as u16 + 1);
             }
         } else {
             // could not parse instruction, halt and catch fire
