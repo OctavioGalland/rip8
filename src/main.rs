@@ -99,7 +99,7 @@ fn main() {
 
     // Main loop
     let mut running = true;
-    let insts_per_frame = refresh_rate / args.freq;
+    let insts_per_frame = args.freq / refresh_rate;
     while running {
         // Clear screen and handle exit event
         canvas.set_draw_color(Color::RGB(0, 0, 0));
