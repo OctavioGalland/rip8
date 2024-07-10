@@ -99,7 +99,8 @@ fn main() {
 
     // Main loop
     let mut running = true;
-    let insts_per_frame = args.freq / refresh_rate;
+    let cycles_per_frame: f32 = args.freq as f32 / refresh_rate as f32;
+    let mut cycles_due: f32 = 0.0;
     while running {
         // Clear screen and handle exit event
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -121,8 +122,11 @@ fn main() {
         }
 
         // Calculate delta since last step
-        for _ in 0..insts_per_frame {
+        cycles_due += cycles_per_frame;
+        let whole_cycles_due = cycles_due as u32;
+        for _ in 0..whole_cycles_due {
             running &= rip8.step(1);
+            cycles_due -= 1.0;
         }
 
         // Turn buzzer on/off & present screen

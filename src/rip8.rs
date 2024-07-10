@@ -29,7 +29,7 @@ pub struct Rip8 {
     s_chip_mode: bool,
     awaiting_input: bool,
     awaiter_index: usize,
-    elapsed: u32,
+    elapsed: f32,
     get_random: fn() -> u8,
 }
 
@@ -52,7 +52,7 @@ impl Rip8 {
             s_chip_mode: false,
             awaiting_input: false,
             awaiter_index: 0,
-            elapsed: 0,
+            elapsed: 0.0,
             get_random,
         }
     }
@@ -150,14 +150,14 @@ impl Rip8 {
     }
 
     pub fn step(&mut self, delta_cycles: u32) -> bool {
-        self.elapsed = self.elapsed.wrapping_add(delta_cycles);
+        self.elapsed += delta_cycles as f32;
 
         // Timers count down at 60hz
-        let tick_cycles = self.freq / 60;
+        let tick_cycles = self.freq as f32 / 60.0;
         while self.elapsed >= tick_cycles {
             self.dt = self.dt.saturating_sub(1);
             self.st = self.st.saturating_sub(1);
-            self.elapsed = self.elapsed.wrapping_sub(tick_cycles);
+            self.elapsed -= tick_cycles;
         }
 
         // fetch
