@@ -1,0 +1,53 @@
+name: rip8
+version: git
+summary: CHIP-8 interpreter written in Rust
+description: |
+  rip8 is an interpreter for the CHIP-8 programming language. It is intentded to
+  observe the semantics of the language as presented in the COSMAC VIP
+  instruction manual (plus undocumented instructions present in the original
+  intrepreter), but deviates in some implementation details to adcommodate
+  modern ROMs, such as
+  - Support for CHIP-8 as well as S-CHIP instruction semantics.
+  - Deeper call stack.
+  - Out-of-memory stack so that programs can make use of up to 3584 bytes of
+    memory (4096 - 256 reserved for font data).
+  - Customizable clock frequency.
+  - Customizable load/start address.
+base: core24
+confinement: strict
+compression: lzo
+
+parts:
+  rip8:
+    plugin: rust
+    source: .
+    build-packages:
+      - libsdl2-dev
+    stage-packages:
+      - libgl1
+      - libglu1-mesa
+      - libsdl2-2.0-0
+    after:
+      - desktop-glib-only
+
+  desktop-glib-only:
+    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
+    source-subdir: glib-only
+    plugin: make
+    build-packages:
+      - libglib2.0-dev
+    stage-packages:
+      - libglib2.0-bin
+
+apps:
+  rip8:
+    command: bin/desktop-launch $SNAP/bin/rip8
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - unity7
+      - opengl
+      - audio-playback
+      - home
+

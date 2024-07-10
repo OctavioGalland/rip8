@@ -12,6 +12,8 @@ rip8 is an interpreter for the CHIP-8 programming language. It is intentded to o
 
 ## Build
 
+### Manually with Cargo
+
 Make sure you have `libsdl2-dev` installed on your system, if on Ubuntu, you can install it with:
 
 ```
@@ -25,7 +27,20 @@ cargo build
 cargo test
 ```
 
+### Snap
+
+Simply move to the root of the repo and run:
+
+```
+snapcraft
+sudo snap install rip8_* --dangerous # We need this flag since the snap will not be signed
+```
+
 ## Running
+
+Keep in mind that when running a ROM, the upper-left portion of your keyboard (keys `1234QWERASDFZXCV` if using a QWERTY keyboard layout) will be used for input, using COSMAC VIP's keyboard layout.
+
+### Manually with Cargo
 
 The runtime library `libsdl2` is required in order to run the interpreter, you can install it with:
 
@@ -39,13 +54,23 @@ then run:
 cargo run -- <path to your ROM>
 ```
 
+### Snap
+
+Simply run:
+
+```
+rip8 <path to your ROM>
+```
+
+### Command Line Options
+
 You can list available runtime options with:
 
 ```
 cargo run -- -h
 ```
 
-### Controlling frequency
+#### Controlling frequency
 
 The interpreter will execute 540 instructions/second. You can customize this value to your needs with the `-f` option, but keep in mind that since timer registers are decremented at 60Hz, you will get more accurate results when setting frequency to multiples of 60.
 
